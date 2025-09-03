@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Análise de Internações</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .metric-card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .chart-container {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        #initial-view, #dashboard-view {
+            transition: opacity 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="text-gray-700">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-800">Painel de Análise de Internações</h1>
+            <p class="text-md text-gray-500 mt-2">Visualize os dados de internações do hospital de forma clara e objetiva.</p>
+        </header>
+
+        <!-- Seção de Upload -->
+        <div id="upload-section" class="max-w-xl mx-auto bg-white p-6 rounded-xl shadow-md text-center">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Comece por aqui</h2>
+            <p class="mb-4 text-gray-600">Selecione o arquivo CSV para gerar o painel de análise.</p>
+            <input type="file" id="csvFile" accept=".csv" class="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100 cursor-pointer
+            "/>
+            <div id="loading" class="mt-4 text-blue-600 hidden">
+                <svg class="animate-spin h-5 w-5 mr-3 inline-block" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processando dados...
+            </div>
+        </div>
+
+        <!-- Visão Inicial (Placeholder) -->
+        <div id="initial-view" class="text-center mt-8 text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-24 w-24 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p class="mt-4 text-lg">Aguardando o arquivo de dados para exibir o painel.</p>
+        </div>
+        
+        <!-- Dashboard Principal (escondido por padrão) -->
+        <div id="dashboard-view" class="hidden opacity-0">
+            <!-- Métricas Principais -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+                <div class="metric-card p-5 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-md font-medium text-gray-500">Total de Pacientes</h3>
+                        <p id="total-pacientes" class="text-3xl font-bold text-gray-800 mt-2">0</p>
+                    </div>
+                </div>
+                <div class="metric-card p-5 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-md font-medium text-gray-500">Tempo Médio de Permanência</h3>
+                        <p id="tempo-medio" class="text-3xl font-bold text-gray-800 mt-2">00:00:00</p>
+                    </div>
+                </div>
+                <div class="metric-card p-5 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-md font-medium text-gray-500">Total de Refeições (Estimado)</h3>
+                        <p id="total-refeicoes" class="text-3xl font-bold text-gray-800 mt-2">0</p>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">*Baseado em 3 refeições por dia de internação.</p>
+                </div>
+                <div class="metric-card p-5 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-md font-medium text-gray-500">Média de Refeições / Paciente</h3>
+                        <p id="media-refeicoes" class="text-3xl font-bold text-gray-800 mt-2">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráficos -->
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mt-8">
+                <div class="lg:col-span-3 chart-container">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Pacientes por Sala</h3>
+                    <canvas id="pacientes-por-sala-chart"></canvas>
+                </div>
+                <div class="lg:col-span-2 chart-container">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Distribuição por Sexo</h3>
+                    <canvas id="distribuicao-sexo-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('csvFile').addEventListener('change', handleFileSelect, false);
+
+        let pacientesPorSalaChart;
+        let distribuicaoSexoChart;
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+            
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('initial-view').style.display = 'none';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                // Simula um pequeno atraso para UX
+                setTimeout(() => {
+                    processData(text);
+                    document.getElementById('loading').classList.add('hidden');
+                    const dashboard = document.getElementById('dashboard-view');
+                    dashboard.classList.remove('hidden');
+                    // Fade-in effect
+                    requestAnimationFrame(() => {
+                      dashboard.classList.remove('opacity-0');
+                    });
+                }, 500);
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function processData(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim() !== '');
+            const header = lines[0].split(',').map(h => h.trim());
+            const data = lines.slice(1).map(line => {
+                const values = line.split(',');
+                let obj = {};
+                header.forEach((key, i) => {
+                    obj[key] = values[i] ? values[i].trim() : '';
+                });
+                return obj;
+            });
+
+            // 1. Quantidade total de pacientes
+            const totalPacientes = data.length;
+            document.getElementById('total-pacientes').innerText = totalPacientes;
+
+            // 2. Quantidade por sala
+            const pacientesPorSala = data.reduce((acc, row) => {
+                const sala = row['Sala'] || 'Não especificada';
+                acc[sala] = (acc[sala] || 0) + 1;
+                return acc;
+            }, {});
+            renderPacientesPorSalaChart(pacientesPorSala);
+
+            // 3. Tempo de permanência (coluna M)
+            let totalSegundosPermanencia = 0;
+            data.forEach(row => {
+                const tempoStr = row['Tempo  permanência'];
+                if(tempoStr) {
+                    const parts = tempoStr.split(':');
+                    if (parts.length === 3) {
+                        const hours = parseInt(parts[0], 10) || 0;
+                        const minutes = parseInt(parts[1], 10) || 0;
+                        const seconds = parseInt(parts[2], 10) || 0;
+                        totalSegundosPermanencia += (hours * 3600) + (minutes * 60) + seconds;
+                    }
+                }
+            });
+            const avgSegundos = totalPacientes > 0 ? totalSegundosPermanencia / totalPacientes : 0;
+            document.getElementById('tempo-medio').innerText = formatSecondsToTime(avgSegundos);
+            
+            // 4. Cálculo de refeições (coluna N)
+            let totalDiasInternacao = 0;
+            data.forEach(row => {
+                const permanenciaTotalStr = row['Tempo  permanência  total  (dias)'];
+                if(permanenciaTotalStr) {
+                    totalDiasInternacao += parseDiasHoras(permanenciaTotalStr);
+                }
+            });
+            
+            // Assumindo 3 refeições por dia. Se a internação for menor que 1 dia, contamos como 1 dia para refeições.
+            const totalRefeicoes = Math.ceil(totalDiasInternacao) * 3;
+            const mediaRefeicoes = totalPacientes > 0 ? (totalRefeicoes / totalPacientes).toFixed(1) : 0;
+
+            document.getElementById('total-refeicoes').innerText = totalRefeicoes;
+            document.getElementById('media-refeicoes').innerText = mediaRefeicoes;
+
+            // Extra: Distribuição por sexo
+            const distribuicaoSexo = data.reduce((acc, row) => {
+                const sexo = row['Sexo'] || 'Não especificado';
+                acc[sexo] = (acc[sexo] || 0) + 1;
+                return acc;
+            }, {});
+            renderDistribuicaoSexoChart(distribuicaoSexo);
+        }
+
+        // Função para converter "X dia(s), Y hora(s)" para um número de dias
+        function parseDiasHoras(durationStr) {
+            let dias = 0;
+            let horas = 0;
+            
+            const diaMatch = durationStr.match(/(\d+)\s*ano/);
+            if (diaMatch) dias += parseInt(diaMatch[1], 10) * 365;
+            
+            const mesMatch = durationStr.match(/(\d+)\s*mes/);
+            if (mesMatch) dias += parseInt(mesMatch[1], 10) * 30; // Aproximação
+
+            const diasMatch = durationStr.match(/(\d+)\s*dia/);
+            if (diasMatch) dias += parseInt(diasMatch[1], 10);
+
+            const horaMatch = durationStr.match(/(\d+)\s*hora/);
+            if (horaMatch) horas += parseInt(horaMatch[1], 10);
+
+            return dias + (horas / 24);
+        }
+
+        function formatSecondsToTime(totalSeconds) {
+            const hours = Math.floor(totalSeconds / 3600);
+            totalSeconds %= 3600;
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = Math.round(totalSeconds % 60);
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function renderPacientesPorSalaChart(data) {
+            const ctx = document.getElementById('pacientes-por-sala-chart').getContext('2d');
+            if (pacientesPorSalaChart) {
+                pacientesPorSalaChart.destroy();
+            }
+            pacientesPorSalaChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        label: 'Nº de Pacientes',
+                        data: Object.values(data),
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1,
+                        borderRadius: 5,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderDistribuicaoSexoChart(data) {
+            const ctx = document.getElementById('distribuicao-sexo-chart').getContext('2d');
+            if(distribuicaoSexoChart){
+                distribuicaoSexoChart.destroy();
+            }
+            distribuicaoSexoChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        data: Object.values(data),
+                        backgroundColor: [
+                            'rgba(236, 72, 153, 0.7)', // Feminino
+                            'rgba(59, 130, 246, 0.7)',  // Masculino
+                            'rgba(168, 85, 247, 0.7)', // Outro
+                            'rgba(203, 213, 225, 0.7)'  // Não especificado
+                        ],
+                        borderColor: [
+                            'rgba(236, 72, 153, 1)',
+                            'rgba(59, 130, 246, 1)',
+                            'rgba(168, 85, 247, 1)',
+                            'rgba(203, 213, 225, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
